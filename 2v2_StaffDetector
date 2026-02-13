@@ -1,0 +1,94 @@
+local NotificationHolder = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Module.Lua"))()
+local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Client.Lua"))()
+
+Notification:Notify(
+    {Title = "✅競爭者管理員探測器 | 2v2版本", Description = "探測器已經啟動 OwO"},
+    {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "default"}
+)
+
+local function playSound(id)
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://" .. tostring(id)
+    sound.Parent = game:GetService("SoundService")
+    sound.Volume = 0.7
+    sound:Play()
+    game.Debris:AddItem(sound, 6)
+end
+
+playSound(113194405128446)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local alreadyNotifiedServerSize = false
+local alreadyNotifiedNewPlayer = false
+local detectedAdmins = {}
+
+local groupId = game.CreatorId
+local startTime = tick()
+local previousPlayerCount = #Players:GetPlayers()
+
+local function getRankName(player)
+    local success, rankName = pcall(function()
+        return player:GetRoleInGroup(groupId)
+    end)
+    if success and rankName and rankName ~= "" then
+        return rankName:lower()
+    end
+    return ""
+end
+
+RunService.Heartbeat:Connect(function()
+    local currentTime = tick()
+    local playerList = Players:GetPlayers()
+    local currentCount = #playerList
+
+    if currentCount > 4 and not alreadyNotifiedServerSize then
+        alreadyNotifiedServerSize = true
+        
+        Notification:Notify(
+            {Title = "⚠️競爭者管理員探測器", Description = "可能探測到管理員 | 伺服器人員大於4個人"},
+            {OutlineColor = Color3.fromRGB(255, 0, 0), Time = 5, Type = "default"}
+        )
+        playSound(5855421995)
+    end
+
+    if currentTime - startTime >= 3 then
+        if currentCount > previousPlayerCount and not alreadyNotifiedNewPlayer then
+            alreadyNotifiedNewPlayer = true
+            
+            Notification:Notify(
+                {Title = "⚠️競爭者管理員探測器", Description = "有新用戶加入"},
+                {OutlineColor = Color3.fromRGB(255, 255, 0), Time = 5, Type = "default"}
+            )
+            playSound(5855421995)
+        end
+        previousPlayerCount = currentCount
+    end
+
+    for _, player in ipairs(playerList) do
+        if player ~= Players.LocalPlayer then
+            local rank = getRankName(player)
+            if rank ~= "" then
+                local isSuspect = rank:find("mod") or rank:find("staff") or 
+                                  rank:find("contributor") or rank:find("script") or 
+                                  rank:find("build")
+                
+                if isSuspect and not detectedAdmins[player.UserId] then
+                    detectedAdmins[player.UserId] = true
+                    
+                    Notification:Notify(
+                        {Title = "⚠️競爭者管理員探測器", 
+                         Description = "探測到管理員 [" .. player.Name .. "]"},
+                        {OutlineColor = Color3.fromRGB(255, 0, 0), Time = 8, Type = "default"}
+                    )
+                    playSound(5855421995)
+                end
+            end
+        end
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    detectedAdmins[player.UserId] = nil
+end)
