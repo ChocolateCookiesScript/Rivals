@@ -22,7 +22,7 @@ local RunService = game:GetService("RunService")
 
 local alreadyNotifiedServerSize = false
 local alreadyNotifiedNewPlayer = false
-local detectedAdmins = {}
+local checkedPlayers = {}           -- 已檢查過的玩家（啟動時 + 新加入時）
 
 local groupId = game.CreatorId
 local startTime = tick()
@@ -36,6 +36,35 @@ local function getRankName(player)
         return rankName:lower()
     end
     return ""
+end
+
+local function checkPlayerRank(player)
+    if player == Players.LocalPlayer or checkedPlayers[player.UserId] then
+        return
+    end
+    
+    checkedPlayers[player.UserId] = true
+    
+    local rank = getRankName(player)
+    if rank ~= "" then
+        local isSuspect = rank:find("mod") or rank:find("staff") or 
+                          rank:find("contributor") or rank:find("script") or 
+                          rank:find("build")
+        
+        if isSuspect then
+            Notification:Notify(
+                {Title = "⚠️競爭者管理員探測器", 
+                 Description = "探測到管理員 [" .. player.Name .. "]"},
+                {OutlineColor = Color3.fromRGB(255, 0, 0), Time = 8, Type = "default"}
+            )
+            playSound(5855421995)
+        end
+    end
+end
+
+-- 啟動時立即檢查所有現有玩家
+for _, player in ipairs(Players:GetPlayers()) do
+    checkPlayerRank(player)
 end
 
 RunService.Heartbeat:Connect(function()
@@ -65,30 +94,14 @@ RunService.Heartbeat:Connect(function()
         end
         previousPlayerCount = currentCount
     end
-
-    for _, player in ipairs(playerList) do
-        if player ~= Players.LocalPlayer then
-            local rank = getRankName(player)
-            if rank ~= "" then
-                local isSuspect = rank:find("mod") or rank:find("staff") or 
-                                  rank:find("contributor") or rank:find("script") or 
-                                  rank:find("build")
-                
-                if isSuspect and not detectedAdmins[player.UserId] then
-                    detectedAdmins[player.UserId] = true
-                    
-                    Notification:Notify(
-                        {Title = "⚠️競爭者管理員探測器", 
-                         Description = "探測到管理員 [" .. player.Name .. "]"},
-                        {OutlineColor = Color3.fromRGB(255, 0, 0), Time = 8, Type = "default"}
-                    )
-                    playSound(5855421995)
-                end
-            end
-        end
-    end
 end)
 
+-- 當有新玩家加入時，只檢查該新玩家
+Players.PlayerAdded:Connect(function(player)
+    checkPlayerRank(player)
+end)
+
+-- 玩家離開時清除記錄
 Players.PlayerRemoving:Connect(function(player)
-    detectedAdmins[player.UserId] = nil
+    checkedPlayers[player.UserId] = nil
 end)
