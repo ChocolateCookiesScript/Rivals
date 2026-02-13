@@ -3,7 +3,7 @@ local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/
 
 Notification:Notify(
     {Title = "✅競爭者管理員探測器 | 2v2版本", Description = "探測器已經啟動 OwO"},
-    {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "default"}
+    {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 240, Type = "default"}
 )
 
 local function playSound(id)
@@ -55,7 +55,7 @@ local function checkPlayerRank(player)
             Notification:Notify(
                 {Title = "⚠️競爭者管理員探測器", 
                  Description = "探測到管理員 [" .. player.Name .. "]"},
-                {OutlineColor = Color3.fromRGB(255, 0, 0), Time = 8, Type = "default"}
+                {OutlineColor = Color3.fromRGB(255, 0, 0), Time = 60, Type = "default"}
             )
             playSound(5855421995)
         end
@@ -77,7 +77,7 @@ RunService.Heartbeat:Connect(function()
         
         Notification:Notify(
             {Title = "⚠️競爭者管理員探測器", Description = "可能探測到管理員 | 伺服器人員大於4個人"},
-            {OutlineColor = Color3.fromRGB(255, 0, 0), Time = 5, Type = "default"}
+            {OutlineColor = Color3.fromRGB(255, 0, 0), Time = 15, Type = "default"}
         )
         playSound(5855421995)
     end
@@ -88,7 +88,7 @@ RunService.Heartbeat:Connect(function()
             
             Notification:Notify(
                 {Title = "⚠️競爭者管理員探測器", Description = "有新用戶加入"},
-                {OutlineColor = Color3.fromRGB(255, 255, 0), Time = 5, Type = "default"}
+                {OutlineColor = Color3.fromRGB(255, 255, 0), Time = 10, Type = "default"}
             )
             playSound(5855421995)
         end
