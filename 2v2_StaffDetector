@@ -3,7 +3,7 @@ local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/
 
 Notification:Notify(
     {Title = "✅競爭者管理員探測器 | 2v2版本", Description = "探測器已經啟動 OwO"},
-    {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 240, Type = "default"}
+    {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 300, Type = "default"}
 )
 
 local function playSound(id)
@@ -19,14 +19,17 @@ playSound(113194405128446)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 
 local alreadyNotifiedServerSize = false
 local alreadyNotifiedNewPlayer = false
-local checkedPlayers = {}           -- 已檢查過的玩家（啟動時 + 新加入時）
+local checkedPlayers = {}
 
 local groupId = game.CreatorId
 local startTime = tick()
 local previousPlayerCount = #Players:GetPlayers()
+
+local knownFriendStaff = {}
 
 local function getRankName(player)
     local success, rankName = pcall(function()
@@ -40,7 +43,7 @@ end
 
 local function checkPlayerRank(player)
     if player == Players.LocalPlayer or checkedPlayers[player.UserId] then
-        return
+        return false
     end
     
     checkedPlayers[player.UserId] = true
@@ -55,16 +58,57 @@ local function checkPlayerRank(player)
             Notification:Notify(
                 {Title = "⚠️競爭者管理員探測器", 
                  Description = "探測到管理員 [" .. player.Name .. "]"},
-                {OutlineColor = Color3.fromRGB(255, 0, 0), Time = 60, Type = "default"}
+                {OutlineColor = Color3.fromRGB(255, 0, 0), Time = 180, Type = "default"}
             )
             playSound(5855421995)
+            return true
         end
+    end
+    return false
+end
+
+local function getFriendStaffInfo()
+    local list = {}
+    local seen = {}
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        local success, pages = pcall(function()
+            return Players:GetFriendsAsync(plr.UserId)
+        end)
+        
+        if success and pages then
+            while true do
+                local page = pages:GetCurrentPage()
+                for _, friend in ipairs(page) do
+                    if checkedPlayers[friend.Id] and not seen[friend.Id] then
+                        table.insert(list, string.sub(friend.Name, 1, 6) .. (#friend.Name > 6 and "..." or ""))
+                        seen[friend.Id] = true
+                    end
+                end
+                if pages.IsFinished then break end
+                pages:AdvanceToNextPageAsync()
+            end
+        end
+    end
+    
+    return list
+end
+
+local hasAnyStaff = false
+for _, player in ipairs(Players:GetPlayers()) do
+    if checkPlayerRank(player) then
+        hasAnyStaff = true
     end
 end
 
--- 啟動時立即檢查所有現有玩家
-for _, player in ipairs(Players:GetPlayers()) do
-    checkPlayerRank(player)
+local friendStaff = getFriendStaffInfo()
+if #friendStaff > 0 then
+    local desc = "偵測到好友中的管理員: " .. table.concat(friendStaff, ", ")
+    Notification:Notify(
+        {Title = "⚠️競爭者管理員探測器", Description = desc},
+        {OutlineColor = Color3.fromRGB(255, 165, 0), Time = 180, Type = "default"}
+    )
+    playSound(5855421995)
 end
 
 RunService.Heartbeat:Connect(function()
@@ -74,10 +118,9 @@ RunService.Heartbeat:Connect(function()
 
     if currentCount > 4 and not alreadyNotifiedServerSize then
         alreadyNotifiedServerSize = true
-        
         Notification:Notify(
             {Title = "⚠️競爭者管理員探測器", Description = "可能探測到管理員 | 伺服器人員大於4個人"},
-            {OutlineColor = Color3.fromRGB(255, 0, 0), Time = 15, Type = "default"}
+            {OutlineColor = Color3.fromRGB(255, 0, 0), Time = 60, Type = "default"}
         )
         playSound(5855421995)
     end
@@ -85,10 +128,9 @@ RunService.Heartbeat:Connect(function()
     if currentTime - startTime >= 3 then
         if currentCount > previousPlayerCount and not alreadyNotifiedNewPlayer then
             alreadyNotifiedNewPlayer = true
-            
             Notification:Notify(
                 {Title = "⚠️競爭者管理員探測器", Description = "有新用戶加入"},
-                {OutlineColor = Color3.fromRGB(255, 255, 0), Time = 10, Type = "default"}
+                {OutlineColor = Color3.fromRGB(255, 255, 0), Time = 15, Type = "default"}
             )
             playSound(5855421995)
         end
@@ -96,12 +138,38 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 當有新玩家加入時，只檢查該新玩家
 Players.PlayerAdded:Connect(function(player)
-    checkPlayerRank(player)
+    task.wait(1)
+    local isStaff = checkPlayerRank(player)
+    
+    local newFriendStaff = getFriendStaffInfo()
+    local addedFriends = {}
+    
+    for _, name in ipairs(newFriendStaff) do
+        if not table.find(knownFriendStaff, name) then
+            table.insert(addedFriends, name)
+            table.insert(knownFriendStaff, name)
+        end
+    end
+    
+    if #addedFriends > 0 then
+        local desc = "新偵測到好友管理員: " .. table.concat(addedFriends, ", ")
+        Notification:Notify(
+            {Title = "⚠️競爭者管理員探測器", Description = desc},
+            {OutlineColor = Color3.fromRGB(255, 165, 0), Time = 180, Type = "default"}
+        )
+        playSound(5855421995)
+    end
+    
+    if isStaff then
+        Notification:Notify(
+            {Title = "⚠️競爭者管理員探測器", Description = "伺服器內有新管理員加入"},
+            {OutlineColor = Color3.fromRGB(255, 0, 0), Time = 180, Type = "default"}
+        )
+        playSound(5855421995)
+    end
 end)
 
--- 玩家離開時清除記錄
 Players.PlayerRemoving:Connect(function(player)
     checkedPlayers[player.UserId] = nil
 end)
